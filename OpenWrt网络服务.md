@@ -6,6 +6,15 @@ v1.0
 
 ## 1. preinit
 
+最其实的脚本是/etc/preinit，pi_init_cmd=“/sbin/init”，source /lib/functions.sh /lib/functions/preinit,sh /lib/functions/system.sh，调价了五个hook点，preinit_essential、preinit_main、failsafe、initramfs、preinit_mount_root。
+/lib/functions.sh定义了一些config的函数，/lib/functions/preinit.sh定义了一些boot_hook的函数，比如boot_hook_init、boot_hook_add、boot_hook_shift、boot_run_hook
+
+source /lib/preinit/*下面的所以脚本文件，然后boot_run_hook preinit_essential和boot_run_hook preinit_main
+第一次进/etc/preinit是，由于没有赋值PREINIT，所以会先去执行/sbin/init
+/sbin/init是由procd/init.c编译而来的，，它首先执行一些early cmdline等，最后执行preinit()函数。
+preinit函数，配置了环境变量PREINIT，再一次fork了/etc/preinit
+进程消失后，调用回调函数spawn_procd，spawn_procd则execp(“procd”)，procd再去执行/etc/init.d/*文件。启动各个服务。
+
 ## 2. ubus
 
 ubus是OpenWrt中的进程间通信机制，类似于桌面版linux的dbus，Android的binder。ubus相当于简化版的dbus，ubus基于unix socket实现，socket绑定到一个本地文件，具有较高的效率；
@@ -216,8 +225,19 @@ ubus -t 30 wai_for network.interface
 
 ## 3. blob、json、uci
 
-json即为JavaScript object Notation，用于异步应用程序中发送和接收信息使用，json是一种简单的数据交换格式，在某些方面，它的作用和xml非常类似，但比xml更为简单。
-简单的说，json可以将JavaScript对象中表示的一组数据转换为字符串，然后就可以在函数之间轻松地传递这个字符串，或者在异步应用中将字符串从web客户端传递给服务器端程序；
+OpenWrt支持c、shell、lua三种语言的进程通过ubus进行进程间通讯，ubus通讯的消息格式遵循json格式。
+
+json(JavaScript object Notation)是一种轻量级的数据交换格式，易于人读写，也易于机器解析和生成。json是一种独立于编程语言之外的文本格式，兼容多种编程语言，如c、c++、Java、JavaScript、perl、Python等。
+
+json由两种格式组成：
+1. object
+object是一个name/vale对，格式是{name:value}，相当于c语言中的结构体、哈希表等。
+
+2. array
+array是一个value列表，格式是[value1,value2,...]，相当于c语言中的数组。
+value可以是string、number、boolean、object或者array。
+
+OpenWrt shell程序中用到了命令jshn和脚本jshn.sh；
 常见api有：
 json_init
 json_cleanup
@@ -233,4 +253,53 @@ json_get_values
 
 ## 4. procd
 
+procd编译生成两个进程，init和procd；
+init进程中包括下面几个阶段：early、cmdline、watchdog_init、kmodloader、preinit；
+其中early是early_mounts和early_env，early_mounts挂着文件系统proc、sysfs、cgroup、tmpfs、devpts，初始化设备/dev/null和/dev/console；
+cmdline去读取/proc/cmdline，获取debug level；
+watchdog_init开启看门狗；
+执行kmodloader来加载驱动模块ko，根据/etc/modules-boot.d/下面的内容来加载；
+preinit函数中执行/sbin/procd -h /etc/hotplug-preinit.json
+设置环境变量PREINIT，执行/etc/preinit；
+进入到执行procd了，及时申请一个netlink socket来接收事件；
+
+preinit_proc的cb函数是spawn_procd，即preinit退出后执行spanw_procd
+spawn_procd再去执行/sbin/procd
+
+procd有5个状态，分别是STATE_EARLY、STATE_INIT、STATE_RUNNING、STATE_SHUTDOWN、STATE_HALT，这个5个状态按顺序变化，当前状态保存在全局变量state中，可通过procd_state_next()函数使状态变化；
+
 ## 5. netifd
+
+netifd_ubus_init首先uloop_init，也是先开启一个loop，然后，ubus_connet连接到ubusd；
+ubus_connect
+--> ubus_connect_ctx
+--> ubus_reconnect
+--> usock
+--> usock_connect
+--> connect(sock, sa, sa_len)
+usock对于client会创建一个USOCK_UNIX类型的socket，并且connect去连接path识别的server socket；
+netifd_ubus_add_fd
+--> ubus_add_uloop
+--> uloop_fd_add
+uloop_fd_add将ctx->sock添加到loop中，ctx->就是刚刚通过usock创建的Unix socket；
+netifd_add_object添加main_object、dev_object、wireless_object；
+netifd_add_object会向ubusd注册方法，发送消息UBUS_MSG_ADD_OBJECT；
+其中main_object的method有restart、reload、add_host_route、get_prote_handlers、add_dynamic；
+dev_object的method有status、set_alias、set_state；
+wireless_object的method有up、down、status、notify、get_validate；
+’这些method都是执行scripts；
+netifd_add_iface_object添加iface_object
+iface_object的method有up、down、status、prepare、dump、add_device、remove_device、notify_proto、remove、set_data；
+name分别是：
+main_object：network
+dev_object：network.device
+wireless_object：network.wireless
+iface_object：network.interface
+
+proto_shell_init：netifd_init_script_handlers(proto_fd, proto_shell_add_handler)
+对应到脚本/lib/netifd/proto/*.sh
+wireless_init：netifd_init_script_handlers(drv_fd, wireless_add_handler)
+对应到脚本/lib/netifd/wireless/*.sh
+
+system_init注册NETLINK_ROUTE、NETLINK_KOBJECT_UEVENT来接收kernel发上来的netlink事件，回调函数分别是cb_rtnl_event和handle_hotplug_event；
+config_init_all，做了一堆初始化工作，待分析；
