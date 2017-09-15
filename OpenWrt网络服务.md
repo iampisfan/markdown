@@ -223,33 +223,166 @@ ubus -t 30 wai_for network.interface
 总体流程如下图所示：
 <center>![](ubus-call.png)</center>
 
-## 3. blob、json、uci
+## 3. libubox
+
+### 3.1. json
 
 OpenWrt支持c、shell、lua三种语言的进程通过ubus进行进程间通讯，ubus通讯的消息格式遵循json格式。
 
 json(JavaScript object Notation)是一种轻量级的数据交换格式，易于人读写，也易于机器解析和生成。json是一种独立于编程语言之外的文本格式，兼容多种编程语言，如c、c++、Java、JavaScript、perl、Python等。
 
 json由两种格式组成：
-1. object
+1. string
+格式是key:value，value为字符串；
 object是一个name/vale对，格式是{name:value}，相当于c语言中的结构体、哈希表等。
 
-2. array
-array是一个value列表，格式是[value1,value2,...]，相当于c语言中的数组。
-value可以是string、number、boolean、object或者array。
+2. number
+格式是key:value，value为整数；
+
+3. boolean
+格式是key:value，value为1或者0；
+
+4. object
+object相当于c语言中中的结构体，格式是key:{key1:value1,key2:value2,...}，value可以是string、number、boolean、object或者array；
+
+6. array
+array相当于c语言中的数组，格式是key:[value1,value2,...]，value可以是string、number、boolean、object或者array。
 
 OpenWrt shell程序中用到了命令jshn和脚本jshn.sh；
-常见api有：
+下面是一个shell程序中使用json的例子：
+```
+. /usr/share/libubox/jshn.sh
+
+# generating json data
 json_init
-json_cleanup
-json_add_string
-json_add_boolean
-json_add_int
-json_add_object
-json_add_array
-json_add_array_data
-json_set_namespace
-json_select
-json_get_values
+json_add_string "str" "Hello, world!"
+json_add_object "obj"
+json_add_int "num" "100"
+json_add_boolean "bool" "0"
+json_close_object
+json_add_array "array"
+json_add_string "arraystr" "array string"
+json_add_int "" "110"
+json_add_boolean "" "1"
+json_close_array
+MSG=`json_dump`
+echo ${MSG}
+
+# parsing json data
+json_load "$MSG"
+json_get_var varstr str
+json_select obj
+json_get_var varnum num
+json_get_var varbool bool
+json_select ..
+json_select array
+json_get_var array1 "1"
+json_get_var array2 "2"
+json_get_var array3 "3"
+cat << EOF
+{
+  msg : $varstr,
+  obj: {
+      num : $varnum,
+      bool : $varbool },
+  array: [ $array1, $array2, $array3 ]
+}
+```
+
+执行结果为：
+
+```
+root@OpenWrt:/# ./jsontest.sh
+{ "str": "Hello, world!", "obj": { "num": 100, "bool": false }, "array": [ "array string", 110, true ] }
+{
+  msg : Hello, world!,
+  obj: {
+      num : 100,
+      bool : 0 },
+  array: [ array string, 110, 1 ]
+}
+```
+
+shell json相关的api函数有：
+
+| 函数                                | 描述                                                    |
+|:-----------------------------------|:-------------------------------------------------------|
+| json_init<br>json_cleanup          | 初始化json环境<br>清空json环境                           |
+| json_add_string                    | 添加string类型的element                                 |
+| json_add_int                       | 添加int类型的element                                    |
+| json_add_boolean                   | 添加boolean类型的element                                |
+| json_add_table<br>json_close_table | 添加table类型的element                                  |
+| json_add_array<br>json_close_array | 添加array类型的element                                  |
+| json_load                          | 从字符串中导入到json格式                                 |
+| json_select                        | 进入到某个element，必须有是table或array才能使用json_select |
+| json_get_keys                      | 获取所有element的key                                    |
+| json_get_values                    | 获取所有element的value                                  |
+| json_get_var                       | 根据key获取value                                        |
+| json_get_type                      | 获取element的类型                                       |
+
+### 3.2. blob & blobmsg
+
+```
+enum {
+        FOO_MESSAGE,
+        FOO_LIST,
+        FOO_TESTDATA
+};
+
+static const struct blobmsg_policy pol[] = {
+        [FOO_MESSAGE] = {
+                .name = "message",
+                .type = BLOBMSG_TYPE_STRING,
+        },
+        [FOO_LIST] = {
+                .name = "list",
+                .type = BLOBMSG_TYPE_ARRAY,
+        },
+        [FOO_TESTDATA] = {
+                .name = "testdata",
+                .type = BLOBMSG_TYPE_TABLE,
+        },
+};
+
+static void dump_message(struct blob_buf *buf)
+{
+        struct blob_attr *tb[ARRAY_SIZE(pol)];
+
+        if (blobmsg_parse(pol, ARRAY_SIZE(pol), tb, blob_data(buf->head), blob_len(buf->head)) != 0) {
+                fprintf(stderr, "Parse failed\n");
+                return;
+        }
+        if (tb[FOO_MESSAGE])
+                fprintf(stderr, "Message: %s\n", (char *) blobmsg_data(tb[FOO_MESSAGE]));
+
+        if (tb[FOO_LIST]) {
+                fprintf(stderr, "List: ");
+                dump_table(blobmsg_data(tb[FOO_LIST]), blobmsg_data_len(tb[FOO_LIST]), 0, true);
+        }
+        if (tb[FOO_TESTDATA]) {
+                fprintf(stderr, "Testdata: ");
+                dump_table(blobmsg_data(tb[FOO_TESTDATA]), blobmsg_data_len(tb[FOO_TESTDATA]), 0, false);
+        }
+}
+
+static void fill_message(struct blob_buf *buf)
+{
+        void *tbl;
+
+        blobmsg_add_string(buf, "message", "Hello, world!");
+
+        tbl = blobmsg_open_table(buf, "testdata");
+        blobmsg_add_u32(buf, "hello", 1);
+        blobmsg_add_string(buf, "world", "2");
+        blobmsg_close_table(buf, tbl);
+
+        tbl = blobmsg_open_array(buf, "list");
+        blobmsg_add_u32(buf, NULL, 0);
+        blobmsg_add_u32(buf, NULL, 1);
+        blobmsg_add_u32(buf, NULL, 2);
+        blobmsg_close_table(buf, tbl);
+}
+```
 
 ## 4. procd
 
