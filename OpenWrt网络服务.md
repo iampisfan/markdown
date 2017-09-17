@@ -322,66 +322,124 @@ shell json相关的api函数有：
 
 ### 3.2. blob & blobmsg
 
+ubus之间传递的消息在程序中使用blob或者blobmsg的形式组织，blob是一种二进制字节序列，在libubox中，blob使用结构体struct blob_attr表示，如下所示：
 ```
-enum {
-        FOO_MESSAGE,
-        FOO_LIST,
-        FOO_TESTDATA
+struct blob_attr {
+	uint32_t id_len;
+	char data[];
 };
+```
 
+在内存中，一个blob数据的格式如下所示：
+![](blob_attr.png)
+
+blob是符合TLV格式的，TLV表示Type-Length-Value，上图中，ID即使Type，Len即是Length，Payload即是Value。
+
+blobmsg是在blob的基础上扩展出来的，blobmsg的格式如下图所示：
+![](blobmsg.png)
+
+blobmsg中扩展标准位extended等于1，payload拆分出key和value两个字段，ID表示blogmsg的类型，类型包括BLOBMSG_TYPE_STRING、BLOBMSG_TYPE_INT、BLOBMSG_TYPE_BOOL、BLOBMSG_TYPE_TABLE、BLOBMSG_TYPE_ARRAY。
+
+- string、int、bool类型blobmsg
+类似于json，string类型的blobmsg的格式如下：
+![](blogmsg_string.png)
+string类型的blobmsg的value为string，int和bool类型的blobmsg的value为对应类型的值。
+
+- table、array类型blobmsg
+类似于json，table类型的blobmsg相当于object类型的json，相当于c语言中的结构体，array相当于c语言中的数组；
+table类型的blobmsg格式如下图所示：
+![](blobmsg_table.png)
+array类型的blobmsg格式如下图所示：
+![](blobmsg_array.png)
+array和table十分相似，区别在于array的元素是不需要key名字的。
+
+一般使用结构体blob_buf来表示blobmsg链表，blob_buf的head和buf（之所以要用两个指针是因为在加到blobmsg长度时，重新申请连续内存指针会发生改变）都指向一个table类型的blobmsg，buflen等于总长度；
+格式如下所示：
+![](blob_buf.png)
+
+blob或者blobmsg常用的api如下所示：
+1. string
+blobmsg_add_string
+blobmsg_get_string
+
+2. int
+blobmsg_add_u8
+blobmsg_add_u16
+blobmsg_add_u32
+blobmsg_add_u64
+blobmsg_get_u8
+blobmsg_get_u16
+blobmsg_get_u32
+blobmsg_get_u64
+
+3. bool
+bool转换成u8的0或者1
+
+4. table
+blobmsg_open_table
+blobmsg_close_table
+```
+/*
+ * Example:
+ *
+ * table_key : {
+ *     string_key : "this is a string",
+ *     int_key : 100,
+ *     bool_key : true
+ */}
+static struct blob_buf buf;
+blobmsg_buf_init(&buf);
+void *tbl = blobmsg_open_table(buf, "table_key");
+blobmsg_add_string(buf, "string_key", "this is a string");
+blobmsg_add_u8(buf, "int_key", 100);
+blobmsg_add_u8(buf, "bool_key", 1);
+blobmsg_close_table(buf, tbl);
+```
+
+5. array
+blobmsg_open_array
+blobmsg_close_array
+```
+/*
+ * Example:
+ *
+ * array_key : [ "this is a string", 100, true ]
+ */
+static struct blob_buf buf;
+blobmsg_buf_init(&buf);
+void *array = blobmsg_open_array(buf, "array_key");
+blobmsg_add_string(buf, NULL, "this is a string");
+blobmsg_add_u8(buf, NULL, 100);
+blobmsg_add_u8(buf, NULL, 1);
+blobmsg_close_array(buf, array);
+```
+
+6. parse
+blobmsg_parse
+```
+//上面两个例子中添加table和array到buf中去，下面将其取出来
+enum {
+        FOO_TABLE,
+        FOO_ARRAY
+};
 static const struct blobmsg_policy pol[] = {
-        [FOO_MESSAGE] = {
-                .name = "message",
-                .type = BLOBMSG_TYPE_STRING,
-        },
-        [FOO_LIST] = {
-                .name = "list",
-                .type = BLOBMSG_TYPE_ARRAY,
-        },
-        [FOO_TESTDATA] = {
-                .name = "testdata",
+        [FOO_TABLE] = {
+                .name = "table_key",
                 .type = BLOBMSG_TYPE_TABLE,
         },
+        [FOO_ARRAY] = {
+                .name = "array_key",
+                .type = BLOBMSG_TYPE_ARRAY,
+        },
 };
-
-static void dump_message(struct blob_buf *buf)
-{
-        struct blob_attr *tb[ARRAY_SIZE(pol)];
-
-        if (blobmsg_parse(pol, ARRAY_SIZE(pol), tb, blob_data(buf->head), blob_len(buf->head)) != 0) {
-                fprintf(stderr, "Parse failed\n");
-                return;
-        }
-        if (tb[FOO_MESSAGE])
-                fprintf(stderr, "Message: %s\n", (char *) blobmsg_data(tb[FOO_MESSAGE]));
-
-        if (tb[FOO_LIST]) {
-                fprintf(stderr, "List: ");
-                dump_table(blobmsg_data(tb[FOO_LIST]), blobmsg_data_len(tb[FOO_LIST]), 0, true);
-        }
-        if (tb[FOO_TESTDATA]) {
-                fprintf(stderr, "Testdata: ");
-                dump_table(blobmsg_data(tb[FOO_TESTDATA]), blobmsg_data_len(tb[FOO_TESTDATA]), 0, false);
-        }
-}
-
-static void fill_message(struct blob_buf *buf)
-{
-        void *tbl;
-
-        blobmsg_add_string(buf, "message", "Hello, world!");
-
-        tbl = blobmsg_open_table(buf, "testdata");
-        blobmsg_add_u32(buf, "hello", 1);
-        blobmsg_add_string(buf, "world", "2");
-        blobmsg_close_table(buf, tbl);
-
-        tbl = blobmsg_open_array(buf, "list");
-        blobmsg_add_u32(buf, NULL, 0);
-        blobmsg_add_u32(buf, NULL, 1);
-        blobmsg_add_u32(buf, NULL, 2);
-        blobmsg_close_table(buf, tbl);
-}
+struct blob_attr *tb[ARRAY_SIZE(pol)];
+blobmsg_parse(pol, ARRAY_SIZE(pol), tb, blob_data(buf->head); //parse
+/* after parse
+ * tb[FOO_TABLE] is table blobmsg
+ * tb[FOO_ARRAY] is array blobmsg
+ * blobmsg_data(tb[FOO_TABLE] get table element head
+ * __blob_for_each_attr(attr, head, len) get every element
+ * /
 ```
 
 ## 4. procd
