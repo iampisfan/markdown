@@ -461,6 +461,243 @@ procd有5个状态，分别是STATE_EARLY、STATE_INIT、STATE_RUNNING、STATE_S
 
 ## 5. netifd
 
+### 5.1 regist ubus method
+
+首先，netifd初始化时会向ubusd支持一系列的object & method，在netifd_ubus_init中添加object：main_object, dev_object, wireless_object, iface_object；脚本（例如ifup、devstatus等）通过ubus call来执行netifd的method。
+
+- main_object
+object name为"network"，method列表如下：
+
+| name               | handler                   |
+|--------------------|---------------------------|
+| restart            | netifd_handle_restart     |
+| reload             | netifd_handle_reload      |
+| add_host_route     | netifd_add_host_route     |
+| get_proto_handlers | netifd_get_proto_handlers |
+| add_dynamic        | netifd_add_dynamic        |
+```
+root@OpenWrt:/# ubus -v list network
+'network' @90c358a9
+        "restart":{}
+        "reload":{}
+        "add_host_route":{"target":"String","v6":"Boolean","interface":"String"}
+        "get_proto_handlers":{}
+        "add_dynamic":{"name":"String"}
+```
+
+- dev_object
+object name为"network.device"，method列表如下：
+
+| name      | handler                 |
+|-----------|-------------------------|
+| status    | netifd_dev_status       |
+| set_alias | netifd_handle_alias     |
+| set_state | netifd_handle_set_state |
+```
+root@OpenWrt:/# ubus -v list network.device
+'network.device' @9fa99d73
+        "status":{"name":"String"}
+        "set_alias":{"alias":"Array","device":"String"}
+        "set_state":{"name":"String","defer":"Boolean"}
+```
+
+- wireless_object
+object name为"network.wireless"，method列表如下：
+
+| name         | handler                         |
+|--------------|---------------------------------|
+| up           | netifd_handle_wdev_up           |
+| down         | netifd_handle_wdev_down         |
+| status       | netifd_handle_wdev_status       |
+| notify       | netifd_handle_wdev_notify       |
+| get_validate | netifd_handle_wdev_get_validate |
+```
+root@OpenWrt:/# ubus -v list network.wireless
+'network.wireless' @4cb96ce9
+        "up":{}
+        "down":{}
+        "status":{}
+        "notify":{}
+        "get_validate":{}
+```
+
+- iface_object
+object name为"network.interface"，method列表如下：
+
+| name          | handler                     |
+|---------------|-----------------------------|
+| up            | netifd_handle_up            |
+| down          | netifd_handle_down          |
+| status        | netifd_handle_status        |
+| prepare       | netifd_handle_iface_prepare |
+| dump          | netifd_handle_dump          |
+| add_device    | netifd_iface_handle_device  |
+| remove_device | netifd_iface_handle_device  |
+| notify_proto  | netifd_iface_notify_proto   |
+| remove        | netifd_iface_remove         |
+| set_data      | netifd_handle_set_data      |
+```
+root@OpenWrt:/# ubus -v list network.interface
+'network.interface' @1193bd55
+        "up":{}
+        "down":{}
+        "status":{}
+        "prepare":{}
+        "dump":{}
+        "add_device":{"name":"String","link-ext":"Boolean"}
+        "remove_device":{"name":"String","link-ext":"Boolean"}
+        "notify_proto":{}
+        "remove":{}
+        "set_data":{}
+```
+
+### 5.2 add proto
+
+```
+root@OpenWrt:/# cat /etc/config/network
+
+config interface 'loopback'
+        option ifname 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config globals 'globals'
+        option ula_prefix 'fd83:ee71:3674::/48'
+
+config interface 'lan'
+        option type 'bridge'
+        option ifname 'eth0 eth1'
+        option proto 'static'
+        option ipaddr '192.168.1.1'
+        option netmask '255.255.255.0'
+        option ip6assign '60'
+
+config interface 'wan'
+        option ifname 'eth2'
+        option proto 'dhcp'
+
+config interface 'wan6'
+        option ifname 'eth2'
+        option proto 'dhcpv6'
+
+
+root@OpenWrt:/# /etc/init.d/network restart
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'lan' is now down
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'lan' is disabled
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Network device 'eth0' link is down
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Bridge 'br-lan' link is down
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'lan' has link connectivity loss
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'loopback' is now down
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'loopback' is disabled
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Network device 'lo' link is down
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'loopback' has link connectivity loss
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'wan' is disabled
+Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'wan6' is disabled
+root@OpenWrt:/# Sat Oct  7 17:29:54 2017 user.notice root: { "name": "marvell", "device": [ [ "channel", 3 ], [ "hwmode", 3 ], [ "htmode", 3 ], [ "txantenna", 3 ], [d
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'lan' is setting up now
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'lan' is now up
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' is enabled
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' is setting up now
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' is now up
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'wan' is enabled
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'wan6' is enabled
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Network device 'lo' link is up
+Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' has link connectivity
+Sat Oct  7 17:29:55 2017 daemon.notice netifd: radio0 (5233): WPA2 CCMP
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: Network device 'eth0' link is up
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: Bridge 'br-lan' link is up
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: Interface 'lan' has link connectivity
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): Configuration file: /var/run/hostapd-wdev0ap0.conf
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): Configuration file: /var/run/hostapd-wdev1ap0.conf
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): [mrvl vendor] - hexdump(len=24): 18 00 26 00 41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d 35 47 2d 31
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): [mrvl-vendor] - hexdump_ascii(len=20):
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233):      41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d   AP8964-OpenWiFi-
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233):      35 47 2d 31                                       5G-1
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): Using interface wdev0ap0 with hwaddr 00:50:43:22:0e:66 and ssid "AP8964-OpenWiFi-5G-1"
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): wdev0ap0: interface state UNINITIALIZED->ENABLED
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): wdev0ap0: AP-ENABLED
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: Network device 'wdev0ap0' link is up
+Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio1 (5234): Open
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): Configuration file: /var/run/hostapd-wdev0ap0.conf
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): Configuration file: /var/run/hostapd-wdev1ap0.conf
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): [mrvl vendor] - hexdump(len=24): 18 00 26 00 41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d 35 47 2d 31
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): [mrvl-vendor] - hexdump_ascii(len=20):
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234):      41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d   AP8964-OpenWiFi-
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234):      35 47 2d 31                                       5G-1
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): Using interface wdev0ap0 with hwaddr 00:50:43:22:0e:66 and ssid "AP8964-OpenWiFi-5G-1"
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): wdev0ap0: interface state UNINITIALIZED->ENABLED
+Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): wdev0ap0: AP-ENABLED
+Sat Oct  7 17:29:58 2017 daemon.notice netifd: Network device 'wdev1ap0' link is up
+
+netifd注册了三个object，network，network.device,network.interface
+root@OpenWrt:/# ubus -v list network
+'network' @90c358a9
+        "restart":{}
+        "reload":{}
+        "add_host_route":{"target":"String","v6":"Boolean","interface":"String"}
+        "get_proto_handlers":{}
+        "add_dynamic":{"name":"String"}
+root@OpenWrt:/# ubus -v list network.device
+'network.device' @9fa99d73
+        "status":{"name":"String"}
+        "set_alias":{"alias":"Array","device":"String"}
+        "set_state":{"name":"String","defer":"Boolean"}
+root@OpenWrt:/# ubus -v list network.wireless
+'network.wireless' @4cb96ce9
+        "up":{}
+        "down":{}
+        "status":{}
+        "notify":{}
+        "get_validate":{}
+root@OpenWrt:/# ubus -v list network.interface
+'network.interface' @1193bd55
+        "up":{}
+        "down":{}
+        "status":{}
+        "prepare":{}
+        "dump":{}
+        "add_device":{"name":"String","link-ext":"Boolean"}
+        "remove_device":{"name":"String","link-ext":"Boolean"}
+        "notify_proto":{}
+        "remove":{}
+        "set_data":{}
+
+./dhcp.sh '' dump
+{ "name": "dhcp", "config": [ [ "ipaddr:ipaddr", 3 ], [ "hostname:hostname", 3 ]
+, [ "clientid", 3 ], [ "vendorid", 3 ], [ "broadcast:bool", 7 ], [ "reqopts:list
+(string)", 3 ], [ "iface6rd", 3 ], [ "sendopts", 3 ], [ "delegate", 7 ], [ "zone
+6rd", 3 ], [ "zone", 3 ], [ "mtu6rd", 3 ], [ "customroutes", 3 ] ], "no-device":
+ false, "no-proto-task": false, "available": false, "renew-handler": true, "last
+error": false }
+
+proto->attach = proto_shell_attach;
+static_proto.attach = static_attach
+
+system_init 注册netlink接收事件，NETLINK_ROUTE cb_rtnl_event, RTM_NEWLINK carrier
+NETLINK_KOBJECT_UEVENT add@ remove@
+
+const struct device_type bridge_device_type = {
+	.name = "Bridge",
+	.config_params = &bridge_attr_list,
+
+	.create = bridge_create,
+	.config_init = bridge_config_init,
+	.reload = bridge_reload,
+	.free = bridge_free,
+	.dump_info = bridge_dump_info,
+};
+
+const struct device_type simple_device_type = {
+	.name = "Network device",
+	.config_params = &device_attr_list,
+
+	.create = simple_device_create,
+	.check_state = system_if_check,
+	.free = simple_device_free,
+};
+```
+
 netifd_ubus_init首先uloop_init，也是先开启一个loop，然后，ubus_connet连接到ubusd；
 ubus_connect
 --> ubus_connect_ctx
