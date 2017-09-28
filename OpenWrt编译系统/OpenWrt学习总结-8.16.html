@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>OpenWrt学习总结-8.16</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<style type="text/css">
+/* GitHub stylesheet for MarkdownPad (http://markdownpad.com) */
+/* Author: Nicolas Hery - http://nicolashery.com */
+/* Version: b13fe65ca28d2e568c6ed5d7f06581183df8f2ff */
+/* Source: https://github.com/nicolahery/markdownpad-github */
+
+/* RESET
+=============================================================================*/
+
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary, time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* BODY
+=============================================================================*/
+
+body {
+  font-family: Helvetica, arial, freesans, clean, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  background-color: #fff;
+  padding: 20px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+body>*:first-child {
+  margin-top: 0 !important;
+}
+
+body>*:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* BLOCKS
+=============================================================================*/
+
+p, blockquote, ul, ol, dl, table, pre {
+  margin: 15px 0;
+}
+
+/* HEADERS
+=============================================================================*/
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 20px 0 10px;
+  padding: 0;
+  font-weight: bold;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 tt, h1 code, h2 tt, h2 code, h3 tt, h3 code, h4 tt, h4 code, h5 tt, h5 code, h6 tt, h6 code {
+  font-size: inherit;
+}
+
+h1 {
+  font-size: 28px;
+  color: #000;
+}
+
+h2 {
+  font-size: 24px;
+  border-bottom: 1px solid #ccc;
+  color: #000;
+}
+
+h3 {
+  font-size: 18px;
+}
+
+h4 {
+  font-size: 16px;
+}
+
+h5 {
+  font-size: 14px;
+}
+
+h6 {
+  color: #777;
+  font-size: 14px;
+}
+
+body>h2:first-child, body>h1:first-child, body>h1:first-child+h2, body>h3:first-child, body>h4:first-child, body>h5:first-child, body>h6:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+a:first-child h1, a:first-child h2, a:first-child h3, a:first-child h4, a:first-child h5, a:first-child h6 {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+h1+p, h2+p, h3+p, h4+p, h5+p, h6+p {
+  margin-top: 10px;
+}
+
+/* LINKS
+=============================================================================*/
+
+a {
+  color: #4183C4;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* LISTS
+=============================================================================*/
+
+ul, ol {
+  padding-left: 30px;
+}
+
+ul li > :first-child, 
+ol li > :first-child, 
+ul li ul:first-of-type, 
+ol li ol:first-of-type, 
+ul li ol:first-of-type, 
+ol li ul:first-of-type {
+  margin-top: 0px;
+}
+
+ul ul, ul ol, ol ol, ol ul {
+  margin-bottom: 0;
+}
+
+dl {
+  padding: 0;
+}
+
+dl dt {
+  font-size: 14px;
+  font-weight: bold;
+  font-style: italic;
+  padding: 0;
+  margin: 15px 0 5px;
+}
+
+dl dt:first-child {
+  padding: 0;
+}
+
+dl dt>:first-child {
+  margin-top: 0px;
+}
+
+dl dt>:last-child {
+  margin-bottom: 0px;
+}
+
+dl dd {
+  margin: 0 0 15px;
+  padding: 0 15px;
+}
+
+dl dd>:first-child {
+  margin-top: 0px;
+}
+
+dl dd>:last-child {
+  margin-bottom: 0px;
+}
+
+/* CODE
+=============================================================================*/
+
+pre, code, tt {
+  font-size: 12px;
+  font-family: Consolas, "Liberation Mono", Courier, monospace;
+}
+
+code, tt {
+  margin: 0 0px;
+  padding: 0px 0px;
+  white-space: nowrap;
+  border: 1px solid #eaeaea;
+  background-color: #f8f8f8;
+  border-radius: 3px;
+}
+
+pre>code {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
+  border: none;
+  background: transparent;
+}
+
+pre {
+  background-color: #f8f8f8;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  line-height: 19px;
+  overflow: auto;
+  padding: 6px 10px;
+  border-radius: 3px;
+}
+
+pre code, pre tt {
+  background-color: transparent;
+  border: none;
+}
+
+kbd {
+    -moz-border-bottom-colors: none;
+    -moz-border-left-colors: none;
+    -moz-border-right-colors: none;
+    -moz-border-top-colors: none;
+    background-color: #DDDDDD;
+    background-image: linear-gradient(#F1F1F1, #DDDDDD);
+    background-repeat: repeat-x;
+    border-color: #DDDDDD #CCCCCC #CCCCCC #DDDDDD;
+    border-image: none;
+    border-radius: 2px 2px 2px 2px;
+    border-style: solid;
+    border-width: 1px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    line-height: 10px;
+    padding: 1px 4px;
+}
+
+/* QUOTES
+=============================================================================*/
+
+blockquote {
+  border-left: 4px solid #DDD;
+  padding: 0 15px;
+  color: #777;
+}
+
+blockquote>:first-child {
+  margin-top: 0px;
+}
+
+blockquote>:last-child {
+  margin-bottom: 0px;
+}
+
+/* HORIZONTAL RULES
+=============================================================================*/
+
+hr {
+  clear: both;
+  margin: 15px 0;
+  height: 0px;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  border-bottom: 4px solid #ddd;
+  padding: 0;
+}
+
+/* TABLES
+=============================================================================*/
+
+table th {
+  font-weight: bold;
+}
+
+table th, table td {
+  border: 1px solid #ccc;
+  padding: 6px 13px;
+}
+
+table tr {
+  border-top: 1px solid #ccc;
+  background-color: #fff;
+}
+
+table tr:nth-child(2n) {
+  background-color: #f8f8f8;
+}
+
+/* IMAGES
+=============================================================================*/
+
+img {
+  max-width: 100%
+}
+</style>
+<style type="text/css">
+.highlight  { background: #ffffff; }
+.highlight .c { color: #999988; font-style: italic } /* Comment */
+.highlight .err { color: #a61717; background-color: #e3d2d2 } /* Error */
+.highlight .k { font-weight: bold } /* Keyword */
+.highlight .o { font-weight: bold } /* Operator */
+.highlight .cm { color: #999988; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #999999; font-weight: bold } /* Comment.Preproc */
+.highlight .c1 { color: #999988; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #999999; font-weight: bold; font-style: italic } /* Comment.Special */
+.highlight .gd { color: #000000; background-color: #ffdddd } /* Generic.Deleted */
+.highlight .gd .x { color: #000000; background-color: #ffaaaa } /* Generic.Deleted.Specific */
+.highlight .ge { font-style: italic } /* Generic.Emph */
+.highlight .gr { color: #aa0000 } /* Generic.Error */
+.highlight .gh { color: #999999 } /* Generic.Heading */
+.highlight .gi { color: #000000; background-color: #ddffdd } /* Generic.Inserted */
+.highlight .gi .x { color: #000000; background-color: #aaffaa } /* Generic.Inserted.Specific */
+.highlight .go { color: #888888 } /* Generic.Output */
+.highlight .gp { color: #555555 } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #aaaaaa } /* Generic.Subheading */
+.highlight .gt { color: #aa0000 } /* Generic.Traceback */
+.highlight .kc { font-weight: bold } /* Keyword.Constant */
+.highlight .kd { font-weight: bold } /* Keyword.Declaration */
+.highlight .kp { font-weight: bold } /* Keyword.Pseudo */
+.highlight .kr { font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #445588; font-weight: bold } /* Keyword.Type */
+.highlight .m { color: #009999 } /* Literal.Number */
+.highlight .s { color: #d14 } /* Literal.String */
+.highlight .na { color: #008080 } /* Name.Attribute */
+.highlight .nb { color: #0086B3 } /* Name.Builtin */
+.highlight .nc { color: #445588; font-weight: bold } /* Name.Class */
+.highlight .no { color: #008080 } /* Name.Constant */
+.highlight .ni { color: #800080 } /* Name.Entity */
+.highlight .ne { color: #990000; font-weight: bold } /* Name.Exception */
+.highlight .nf { color: #990000; font-weight: bold } /* Name.Function */
+.highlight .nn { color: #555555 } /* Name.Namespace */
+.highlight .nt { color: #000080 } /* Name.Tag */
+.highlight .nv { color: #008080 } /* Name.Variable */
+.highlight .ow { font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mf { color: #009999 } /* Literal.Number.Float */
+.highlight .mh { color: #009999 } /* Literal.Number.Hex */
+.highlight .mi { color: #009999 } /* Literal.Number.Integer */
+.highlight .mo { color: #009999 } /* Literal.Number.Oct */
+.highlight .sb { color: #d14 } /* Literal.String.Backtick */
+.highlight .sc { color: #d14 } /* Literal.String.Char */
+.highlight .sd { color: #d14 } /* Literal.String.Doc */
+.highlight .s2 { color: #d14 } /* Literal.String.Double */
+.highlight .se { color: #d14 } /* Literal.String.Escape */
+.highlight .sh { color: #d14 } /* Literal.String.Heredoc */
+.highlight .si { color: #d14 } /* Literal.String.Interpol */
+.highlight .sx { color: #d14 } /* Literal.String.Other */
+.highlight .sr { color: #009926 } /* Literal.String.Regex */
+.highlight .s1 { color: #d14 } /* Literal.String.Single */
+.highlight .ss { color: #990073 } /* Literal.String.Symbol */
+.highlight .bp { color: #999999 } /* Name.Builtin.Pseudo */
+.highlight .vc { color: #008080 } /* Name.Variable.Class */
+.highlight .vg { color: #008080 } /* Name.Variable.Global */
+.highlight .vi { color: #008080 } /* Name.Variable.Instance */
+.highlight .il { color: #009999 } /* Literal.Number.Integer.Long */
+.pl-c {
+    color: #969896;
+}
+
+.pl-c1,.pl-mdh,.pl-mm,.pl-mp,.pl-mr,.pl-s1 .pl-v,.pl-s3,.pl-sc,.pl-sv {
+    color: #0086b3;
+}
+
+.pl-e,.pl-en {
+    color: #795da3;
+}
+
+.pl-s1 .pl-s2,.pl-smi,.pl-smp,.pl-stj,.pl-vo,.pl-vpf {
+    color: #333;
+}
+
+.pl-ent {
+    color: #63a35c;
+}
+
+.pl-k,.pl-s,.pl-st {
+    color: #a71d5d;
+}
+
+.pl-pds,.pl-s1,.pl-s1 .pl-pse .pl-s2,.pl-sr,.pl-sr .pl-cce,.pl-sr .pl-sra,.pl-sr .pl-sre,.pl-src,.pl-v {
+    color: #df5000;
+}
+
+.pl-id {
+    color: #b52a1d;
+}
+
+.pl-ii {
+    background-color: #b52a1d;
+    color: #f8f8f8;
+}
+
+.pl-sr .pl-cce {
+    color: #63a35c;
+    font-weight: bold;
+}
+
+.pl-ml {
+    color: #693a17;
+}
+
+.pl-mh,.pl-mh .pl-en,.pl-ms {
+    color: #1d3e81;
+    font-weight: bold;
+}
+
+.pl-mq {
+    color: #008080;
+}
+
+.pl-mi {
+    color: #333;
+    font-style: italic;
+}
+
+.pl-mb {
+    color: #333;
+    font-weight: bold;
+}
+
+.pl-md,.pl-mdhf {
+    background-color: #ffecec;
+    color: #bd2c00;
+}
+
+.pl-mdht,.pl-mi1 {
+    background-color: #eaffea;
+    color: #55a532;
+}
+
+.pl-mdr {
+    color: #795da3;
+    font-weight: bold;
+}
+
+.pl-mo {
+    color: #1d3e81;
+}
+.task-list {
+padding-left:10px;
+margin-bottom:0;
+}
+
+.task-list li {
+    margin-left: 20px;
+}
+
+.task-list-item {
+list-style-type:none;
+padding-left:10px;
+}
+
+.task-list-item label {
+font-weight:400;
+}
+
+.task-list-item.enabled label {
+cursor:pointer;
+}
+
+.task-list-item+.task-list-item {
+margin-top:3px;
+}
+
+.task-list-item-checkbox {
+display:inline-block;
+margin-left:-20px;
+margin-right:3px;
+vertical-align:1px;
+}
+</style>
+</head>
+<body>
+<h1 id="openwrt-">OpenWrt学习总结</h1>
+<p>By: Jinhua Zhang<br>Version 1.0<br>Data: 2017.8.5<br><br></p>
+<h2 id="1-">1 编译环境搭建</h2>
+<p>由于还没有访问P4的权限，所以先按官网上的方式学习搭建OpenWrt的编译环境。marvell内部版本的OpenWrt的编译环境与此大部分步骤相同，具体可参考marvell OpenWrt首目录下面的readme.txt文件。</p>
+<h3 id="1-1-">1.1 安装工具</h3>
+<p>在下载OpenWrt源码前，需要在Ubuntu系统中安装一系列工具，这些工具主要用于OpenWrt版本管理，解压tar包，编译，打包img等，按如下步骤来安装工具：</p>
+<pre><code>sudo apt-get install g++
+sudo apt-get install libncurses5-dev
+sudo apt-get install zlib1g-dev
+sudo apt-get install bison
+sudo apt-get install flex
+sudo apt-get install unzip
+sudo apt-get install autoconf
+sudo apt-get install gawk
+sudo apt-get install make
+sudo apt-get install gettext
+sudo apt-get install gcc
+sudo apt-get install binutils
+sudo apt-get install patch
+sudo apt-get install bzip2
+sudo apt-get install libz-dev
+sudo apt-get install asciidoc
+sudo apt-get install subversion
+sudo apt-get install sphinxsearch
+sudo apt-get install libtool
+sudo apt-get install sphinx-common
+</code></pre><h3 id="1-2-sourcecode">1.2 下载SourceCode</h3>
+<p>官网给出的OpenWrt源码下载方式是：</p>
+<blockquote>
+<p>git clone git://github.com/openwrt/openwrt.git</p>
+</blockquote>
+<p>如果从git://github.com/openwrt/openwrt.git这个链接上无法下载，可以改成下面的链接试试：</p>
+<blockquote>
+<p>git clone <a href="https://github.com/openwrt/openwrt.git">https://github.com/openwrt/openwrt.git</a></p>
+</blockquote>
+<p>最新的稳定版分支是chao_calmer，建议切换到稳定分支，使用下面的命令切换：</p>
+<blockquote>
+<p>git checkout -b chao_calmer origin/chao_calmer</p>
+</blockquote>
+<p>注意：从官网上下载下来的OpenWrt源码和marvell内部的OpenWrt源码存在差异，所以官网下载下来的源码仅供学习使用，下面都是基于官网上下载的OpenWrt源码来做的分析，版本是chao_calmer.</p>
+<h3 id="1-3-">1.3 编译前准备工作</h3>
+<p>在编译OpenWrt之前，需要通过feeds来下载软件套件，主要有：Luci，packages，management，routing，telephone等。OpenWrt提供了一个脚本来做这些软件套件的下载和配置工作，使用下面两个命令完成：</p>
+<blockquote>
+<p>./scripts/feeds update -a<br>./scripts/feeds install -a</p>
+</blockquote>
+<p>update会将软件套件下载feeds目录下面，install会将feeds的内容创建软链接到package/feeds。</p>
+<p>执行命令：</p>
+<blockquote>
+<p>make menuconfig</p>
+</blockquote>
+<p>选择Target System为&quot;Marvell Armada 37x/38x/XP&quot;，选择Target Profile为&quot;Marvell Armada 385 DB AP (DB-88F6820-AP)&quot;，配置选择编译Luci或者其他packages。</p>
+<p>menuconfig目标定义在include/toplevel.mk中；</p>
+<pre><code>menuconfig: scripts/config/mconf prepare-tmpinfo FORCE
+        if [ \! -e .config -a -e $(HOME)/.openwrt/defconfig ]; then \
+                cp $(HOME)/.openwrt/defconfig .config; \
+        fi
+        $&lt; Config.in
+</code></pre><p>如果没有找到.config，则将defconfig拷贝到.config。实际上defconfig也是不存在的，所以通过命令scripts/config/mconfig Config.in来生成.config，首目录下面的Config.in会include子目录下面的Config.in。</p>
+<p>执行命令：</p>
+<blockquote>
+<p>make kernel_menuconfig</p>
+</blockquote>
+<p>配置kernel的menuconfig，与配置标准的linux menuconfig一样，kernel_menuconfig也是定义在include/toplevel.mk。</p>
+<pre><code>kernel_menuconfig: prepare_kernel_conf
+        $(_SINGLE)$(NO_TRACE_MAKE) -C target/linux menuconfig
+</code></pre><p>make kernel_menuconfig实际上是进到target/linux目录下执行menuconfig。<br>target/linux/Makefile的menuconfig目标实际上是进到$(BOARD)目录下执行menuconfig，所以最终是执行了target/linux/mvebu/Makefile的menuconfig目标。<br>kernel的menuconfig目标定义在kernel-build.mk中，规则定义如下：</p>
+<pre><code>oldconfig menuconfig nconfig: $(STAMP_PREPARED) $(STAMP_CHECKED) FORCE
+        rm -f $(LINUX_DIR)/.config.prev
+        rm -f $(STAMP_CONFIGURED)
+        $(LINUX_RECONF_CMD) &gt; $(LINUX_DIR)/.config
+        $(_SINGLE)$(MAKE) -C $(LINUX_DIR) $(KERNEL_MAKEOPTS) $$@
+        $(LINUX_RECONF_DIFF) $(LINUX_DIR)/.config &gt; $(LINUX_RECONFIG_TARGET)
+</code></pre><p>实际上做了三件事，1、生成$(LINUX_DIT)/.config，2、进到$(LINUX_DIR)目录执行menuconfig，3、如果.config有修改则保存到$(LINUX_RECONFIG_TARGET)；</p>
+<ol>
+<li>生成$(LINUX_DIT)/.config<br>$(LINUX_RECONF_CMD)定义在include/target.mk中。</li></ol>
+<pre><code>LINUX_RECONF_CMD = $(call __linux_confcmd,$(LINUX_RECONFIG_LIST),)
+__linux_confcmd = $(SCRIPT_DIR)/kconfig.pl $(2) $(patsubst %,+,$(wordlist 2,9999,$(1))) $(1)
+LINUX_RECONFIG_LIST = $(wildcard $(GENERIC_LINUX_CONFIG) \
+$(LINUX_TARGET_CONFIG) $(if $(USE_SUBTARGET_CONFIG),$(LINUX_SUBTARGET_CONFIG)))
+</code></pre><p>__linux_confcmd就是调用了kconfig.pl脚本，LINUX_RECONFIG_LIST包含了两个文件，一个是target/linux/generic/config-3.18，另一个是target/linux/mvebu/config.3.18。也就使用脚本kconfig.pl来生成.config。</p>
+<ol>
+<li>进到$(LINUX_DIR)目录执行menuconfig<br>这步和普通的linux目录下执行make menuconfig是一样的。</li><li>如果.config有修改则保存到$(LINUX_RECONFIG_TARGET)<br>$(LINUX_RECONF_DIFF)也是kconfig.pl脚本，$(LINUX_RECONFIG_TARGET)是target/linux/mvebu/config.3.18，也就是说如果.config有修改，则会保存到target/linux/mvebu/config.3.18上。</li></ol>
+<h3 id="1-4-">1.4 整体编译</h3>
+<p>执行make V=s进行整体编译，第一次编译建议使用make V=s，可以看到详细的编译过程以及出错信息，如果想要加快编译速度，可以添加参数-j n，表示使用n条线程同时编译。<br>整体编译分成下面几个步骤，包括编译host工具、编译交叉工具链、编译内核模块、编译ipk、安装ipk到文件系统、编译内核、将内核和文件系统组合成最终的bin文件。</p>
+<center><img src="1.jpg" alt=""></center>
+
+<p>make clean清除$(BUILD_DIR)、$(STAGING_DIR)、$(BIN_DIR)和$(BUILD_LOG_DIR)；<br>make dirclean清除$(STAGING_DIR_HOST)、$(TOOLCHAIN_DIR)、$(BUILD_DIR_HOST)、$(BUILD_DIR_TOOLCHAIN)和$(TMP_DIR);<br>make distclean清除所有相关目录，包括下载的软件包，配置文件，feed内容等，包括bin、build_dir、.config*、dl、feeds、key-build*、logs、packages/feeds、package/openwrt-packages、staging_dir和tmp目录。</p>
+<h2 id="2-">2 目录结构</h2>
+<pre><code> openwrt
+ ├─ docs
+ ├─ toolchain
+ ├─ config
+ ├─ package
+ |  ├─ firmware
+ |  ├─ network
+ |  ├─ utils
+ |  ├─ boot
+ |  ├─ kernel
+ |  ├─ system
+ |  ├─ feeds
+ ├─ scripts
+ ├─ tools
+ ├─ include
+ ├─ target
+ |  ├─ linux
+ |  ├─ sdk
+ |  ├─ toolchain
+ ├─ feeds
+ ├─ dl
+ ├─ staging_dir
+ |  ├─ host
+ |  ├─ target-arm-cortex-a9+vfpv3_uClibc-0.9.33.2_eabi
+ |  ├─ toolchain-arm_cortex-a9+vfpv3_gcc-linaro_uClibc-0.9.33.2_eabi
+ ├─ build_dir
+ |  ├─ host
+ |  ├─ target-arm_cortex-a9+vfpv9_uClibc-0.9.33.2_eabi
+ |  ├─ toolchain-arm_cortex-a9+vfpv9_gcc-4.8-linaro_uClibc-0.9.33.2_eabi
+ ├─ bin
+ |  ├─ mvebu
+</code></pre><p>OpenWrt初始目录包括docs，toolchain，config，package，scripts，tools，include，target。</p>
+<ul>
+<li>toolchain<br>包含一些命令去获取kernel headers，c library，bin-utils，debugger。</li><li>package<br>包含针对各个软件包的Makefile。OpenWrt定义了一套Makefile模板，各软件参照这个模板定义自己的信息，如软件包的版本、下载地址、编译方式、安装地址等。</li><li>script<br>一些perl脚本，用于软件包管理</li><li>tools<br>编译时需要一些工具，tools里包含了获取和编译这些工具的命令。里面有一些Makefile，有的可能还有patch。每个Makefile里有一句$(eval $(call HostBuild))，表示编译这个工具是为了在主机上使用的。</li><li>include<br>OpenWrt的Makefile都存放在这里。</li><li>target<br>各平台在这个目录定义了firmware和kernel的编译过程。</li></ul>
+<p>编译生成的文件夹有feeds，dl，staging_dir，build_dir，bin</p>
+<ul>
+<li>feeds<br>通过feeds下载的软件套件。</li><li>dl<br>软件包下载后放在这个目录里</li><li>staging_dir<br>最终安装目录。tools，toolchain被安装在这里，roots也安装在这里。</li><li>build_dir<br>软件包都解压在build_dir里，然后在此编译</li><li>bin<br>编译完成之后，firmware和各种ipk会放在此目录下。</li></ul>
+<h2 id="3-">3 编译系统</h2>
+<p>首目录下面的Makefile的第一个目标是world，所以make时默认是执行目标world，但是world的依赖和命令都是空的，说明Makefile后面会覆盖该条规则；<br>第一次进入Makefile时OPENWRT_BUILD=0，第二次进入Makefile时OPENWRT_BUILD=1，第一次进入时include toplevel.mk，toplevel.mk中的%::解释了world目标的规则：</p>
+<pre><code>%::
+    @+$(PREP_MK) $(NO_TRACE_MAKE) -r -s prereq
+    @( \
+        cp .config tmp/.config; \
+        ./scripts/config/conf --defconfig=tmp/.config -w tmp/.config Config.in &gt; /dev/null 2&gt;&amp;1; \
+            if ./scripts/kconfig.pl &#39;&gt;&#39; .config tmp/.config | grep -q CONFIG; then \
+                printf &quot;$(_R)WARNING: your configuration is out of sync. \
+                    Please run make menuconfig, oldconfig or defconfig!$(_N)\n&quot; &gt;&amp;2; \
+            fi \
+    )
+    @+$(ULIMIT_FIX) $(SUBMAKE) -r $@ $(if $(WARN_PARALLEL_ERROR), || { \
+        printf &quot;$(_R)Build failed - please re-run with -j1 to see the real error message$(_N)\n&quot; &gt;&amp;2; \
+        false; \
+    } )
+</code></pre><p>相当于：</p>
+<pre><code>%::
+    @make V=s -r -s prereq
+    @make -w -r world
+</code></pre><p>也就是会再进到首目录下面执行make world；<br>第二次make时，OPENWRT_BUILD=1，进入else分支，会include一些Makefile，包括：rules.mk、$(INCLUDE_DIR)/depends.mk、$(INCLUDE_DIR)/subdir.mk、target/Makefile、package/Makefile、tools/Makefile、toolchain/Makefile。</p>
+<p>其中rules.mk中会定义一些全局宏，这些宏主要是定义了Makefile会用到的目录路径，且宏的值于target system和target profile有关，针对Target System为&quot;Marvell Armada 37x/38x/XP&quot;，Target Profile为&quot;Marvell Armada 385 DB AP (DB-88F6820-AP)&quot;，宏定于值如下：</p>
+<ul>
+<li>BUILD_DIR<br>build_dir/target-arm_cortex-a9+vfpv3_musl-1.1.16_eabi</li><li>STAGING_DIR<br>staging_dir/target-arm_cortex-a9+vfpv3_musl-1.1.16_eabi</li><li>BIN_DIR<br>bin/mvebu</li><li>BUILD_LOG_DIR<br>logs</li><li>STAGING_DIR_HOST<br>staging_dir/host</li><li>TOOLCHAIN_DIR<br>staging_dir/toolchain-arm_cortex-a9+vfpv3_gcc-5.3.0_musl-1.1.16_eabi</li><li>BUILD_DIR_HOST<br>build_dir/host</li><li>BUILD_DIR_TOOLCHAIN<br>build_dir/toolchain-arm_cortex-a9+vfpv3_gcc-5.3.0_musl-1.1.16_eabi</li><li>PACKAGE_DIR<br>bin/mvebu/packages</li><li>TARGET_ROOTFS_DIR<br>build_dir/target-arm_cortex-a9+vfpv3_musl-1.1.16_eabi</li><li>TARGET_DIR<br>build_dir/target-arm_cortex-a9+vfpv3_musl-1.1.16_eabi/root-mvebu</li><li>STAGING_DIR_ROOT<br>staging_dir/target-arm_cortex-a9+vfpv3_musl-1.1.16_eabi/root-mvebu</li></ul>
+<p>$(INCLUDE_DIR)/subdir.mk定义了两个非常重要的函数：subdir和stampfile，subdir会生成一些规则，例如package/Makefile调用了(eval $(call subdir,$(curdir)))，则会递归到各个子目录下，生成package/$(bd)/$(target)和package/$(lastdir)/$(target)，$(target)取值为clean download prepare compile install update refresh prereq dist distcheck configure。<br>以iperf为例，subdir会为其生成下面规则：</p>
+<blockquote>
+<p>D package<br>BD package/network/utils/iperf<br>package/network/utils/iperf/clean: package/stamp-install/clean<br>package/iperf/clean: package/network/utils/iperf/clean<br>package/network/utils/iperf/download:<br>package/iperf/download: package/network/utils/iperf/download<br>package/network/utils/prepare:<br>package/iperf/prepare: package/network/utils/prepare<br>package/network/utils/iperf/compile: package/libs/toolchain/compile package/libs/uClibc++/compile<br>package/iperf/compile: package/network/utils/iperf/compile<br>package/network/utils/iperf/install:<br>package/iperf/install: package/network/utils/iperf/install<br>package/network/utils/iperf/update:<br>package/iperf/update: package/network/utils/iperf/update<br>package/network/utils/iperf/refresh:<br>package/iperf/refresh: package/network/utils/iperf/refresh<br>package/network/utils/iperf/prereq:<br>package/iperf/prereq: package/netowrk/utils/iperf/prereq</p>
+</blockquote>
+<p>package/network/utils/iperf/compile这条规则的命令是make -C network/utils/iperf compile，也就是规则如下：</p>
+<pre><code>package/network/utils/iperf/compile: \
+        package/libs/toolchain/compile \
+        package/libs/uClibc++/compile
+    make -C network/utils/iperf compile
+</code></pre><p>同样，其他目标也是同样的规则，所以如果需要单独编译iperf，则执行命令make package/network/utils/iperf/compile或者make package/iperf/compile；<br>同样，单独编译内核则执行命令make target/linux/compile；<br>单独编译内核模块，例如mwlwifi，则执行命令make package/kernel/mwlwifi/compile。</p>
+<p>stampfile同样会生成一些规则，这些规则主要用于生成记录编译时间的中间文件，用于解决依赖关系，以及哪些目标需要重新被执行；</p>
+<h3 id="3-1-packages">3.1 编译packages</h3>
+<p>以iperf为例进行说明，iperf的Makefile位于package/network/utils/iperf目录下，包括如下文件：</p>
+<pre><code>package/network/utils/iperf
+├─ Makefile
+├─ patches
+   ├─ 0001-set-report-next-time-in-single-thread-mode.patch
+</code></pre><p>执行命令</p>
+<blockquote>
+<p>make package/iperf/compile</p>
+</blockquote>
+<p>或者</p>
+<blockquote>
+<p>make package/network/utils/iperf/compile</p>
+</blockquote>
+<p>Makefile的内容如下：</p>
+<pre><code>include $(TOPDIR)/rules.mk
+
+PKG_NAME:=iperf
+PKG_VERSION:=2.0.5
+PKG_RELEASE:=1
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=@SF/$(PKG_NAME)
+PKG_MD5SUM:=44b5536b67719f4250faed632a3cd016
+
+PKG_MAINTAINER:=Felix Fietkau &lt;nbd@openwrt.org&gt;
+PKG_LICENSE:=BSD-3-Clause
+
+PKG_BUILD_PARALLEL:=1
+
+include $(INCLUDE_DIR)/uclibc++.mk
+include $(INCLUDE_DIR)/package.mk
+
+define Package/iperf/Default
+  SECTION:=net
+  CATEGORY:=Network
+  DEPENDS:= $(CXX_DEPENDS)
+  TITLE:=Internet Protocol bandwidth measuring tool
+  URL:=http://sourceforge.net/projects/iperf/
+endef
+
+define Package/iperf/Default/description
+ Iperf is a modern alternative for measuring TCP and UDP bandwidth
+ performance, allowing the tuning of various parameters and
+ characteristics.
+endef
+
+define Package/iperf
+$(call Package/iperf/Default)
+  TITLE+= (with single thread support)
+  VARIANT:=single
+endef
+
+define Package/iperf/description
+$(call Package/iperf/Default/description)
+ This package is built with single thread support.
+endef
+
+CONFIGURE_ARGS += --disable-multicast
+CONFIGURE_VARS += ac_cv_func_malloc_0_nonnull=yes
+
+ifeq ($(BUILD_VARIANT),single)
+  CONFIGURE_ARGS += --disable-threads
+else
+  CONFIGURE_ARGS += --enable-threads=posix
+  CONFIGURE_VARS += ac_cv_func_pthread_cancel=no
+endif
+
+CONFIGURE_VARS += CXXFLAGS=&quot;$$$$CXXFLAGS -fno-rtti&quot;
+
+define Package/iperf/install
+    $(INSTALL_DIR) $(1)/usr/bin
+    $(INSTALL_BIN) $(PKG_BUILD_DIR)/src/iperf $(1)/usr/bin/iperf
+endef
+
+$(eval $(call BuildPackage,iperf))
+</code></pre><p>Makefile中首先定义了一些变量，包括：</p>
+<ul>
+<li>PKG_NAME<br>package的名字，用于显示在menuconfig和生成ipkg，例中该值等于iperf</li><li>PKG_VERSION<br>package的版本号，例中该值等于2.0.5</li><li>PKG_RELEASE<br>package的Makefile的版本，例中该值等于1</li><li>PKG_SOURCE<br>package的sourcecode包的名称，例中该值等于iperf-2.0.5.tar.gz</li><li>PKG_SOURCE_URL<br>package sourcecode包的下载链接，可以添加多个链接，以分号隔开，例中该值等于@SF/iperf，其中@SF表示从sourceforge</li><li>PKG_MD5SUM<br>tar包的MD5校验码，由于核对tar包下载是否正确</li><li>PKG_CAT<br>tar包的解压方式，包括zcat, bzcat, unzip等</li><li>PKG_BUILD_DIR<br>tar包解压以及编译的路径，如果Makefile中不指定，则默认为$(BUILD_DIR)/$(PKG_NAME)$(PKG_VERSION)，例子中将PKG_BUILD_DIR指定成了$(BUILD)/iperf-single/iperf-2.0.5</li></ul>
+<p>PKG_*这些变量主要描述了package的从什么连接下载，下载什么版本的tar包，以及如何解压tar包。</p>
+<p>此外还定义了下面这些宏:<br><strong>Package/$(PKG_NAME):</strong><br>$(PKG_NAME)表示package的名称，在Package/$(PKG_NAME)中同样会定义下面这些变量：</p>
+<ul>
+<li>SECTION<br>package类别（这个变量并不使用）</li><li>CATEGORY<br>package在menuconfig上面显示的分类，包括Network, Sound, Utilities, Multimedia等</li><li>TITLE<br>package的简单描述</li><li>URL<br>package sourcecode的下载链接</li><li>MAINTAINER (可选)<br>package作者或联系人</li><li>DEPENDS (可选)<br>依赖其他模块，例如</li></ul>
+<p><strong>Package/$(PKG_NAME)/conffiles (可选):</strong><br>该package所需要的config文件，每行列举一个；<br>例如ppp模块需要的config定义在Makefile。</p>
+<pre><code>defind Package/ppp/conffiles
+/etc/ppp/chap-secrets
+/etc/ppp/filter
+/etc/ppp/ip-down
+/etc/ppp/ip-up
+/etc/ppp/option
+ended
+</code></pre><p><strong>Build/Prepare (可选):</strong><br>定义一些列解压缩tar包，打patch，拷贝sourcecode到build dir等操作的命令</p>
+<p><strong>Build/Compile (可选):</strong><br>定义编译的命令</p>
+<p><strong>Package/$(PKG_NAME)/install:</strong><br>将编译之后的bin拷贝到对应的目录下面去，一般定义下面四个宏来完成拷贝动作</p>
+<ul>
+<li>INSTALL_DIR：install -d m0755</li><li>INSTALL_BIN：install -m0755</li><li>INSTALL_DATA：install -m0644</li><li>INSTALL_CONF：install -m0600</li></ul>
+<p>所以例子中的</p>
+<pre><code>define Package/iperf/install
+    $(INSTALL_DIR) $(1)/usr/bin
+    $(INSTALL_BIN) $(PKG_BUILD_DIR)/src/iperf $(1)/usr/bin/iperf
+endef
+</code></pre><p>相当于执行了下面两个命令：</p>
+<pre><code>install -d m0755 $(KDIR)/usr/bin #如果不存在则新建$(KDIR)/usr/bin文件夹
+install -m0755 $(PKG_BUILD_DIR)/src/iperf $(KDIR)/usr/bin/iperf
+#将bin文件iperf从编译目录拷贝到$(KDIR)/usr/bin文件夹中
+</code></pre><p>最后一句$(eval $(call BuildPackage,iperf))是关键，BuildPackage定义在include/package.mk中，代码如下：</p>
+<pre><code>define BuildPackage
+  $(Build/IncludeOverlay)
+  $(eval $(Package/Default))
+  $(eval $(Package/$(1)))
+
+...
+
+  $(if $(PKG_HOST_ONLY)$(DUMP),,$(call Build/DefaultTargets,$(1)))
+endef
+</code></pre><p>$(Build/IncludeOverlay)会include$(TOPDIR)/overlay/*/$(PKG_DIR_NAME).mk，如果有该mk文件则overlay掉初始Makfile中的一些定义，一般下载后的package不方便直接修改，可以通过overlay的方式修改编译选项。<br>$(eval $(Package/Default))展开package中default值。<br>$(eval $(Package/$(1)))展开package Makefile中定义的值。</p>
+<p>分析package.mk发现，目标install依赖于compile，compile依赖于$(STAMP_INSTALLED)，$(STAMP_INSTALLED)依赖于$(STAMP_BUILT)，$(STAMP_BUILT)依赖于$(STAMP_CONFIGURED)，$(STAMP_CONFIGURED)依赖于$(STAMP_PREPARED)，其中$(STAMP_PREPARED)更新是会执行$(Build/Prepare)，$(STAMP_CONFIGURED)更新时会执行$(Build/Configure)，$(STAMP_BUILT)更新时会执行$(Build/Compile)和$(Build/Install)。</p>
+<p>目标configure依赖于$(STAMP_CONFIGURED)。<br>目标prepare依赖于$(STAMP_PREPARED)。</p>
+<center><img src="2.jpg" alt=""></center>
+
+<p>如果在package Makefile中没有定义，那么这些宏的默认值为：</p>
+<pre><code>Build/Prepare=$(call Build/Prepare/Default,)
+Build/Configure=$(call Build/Configure/Default,)
+Build/Compile=$(call Build/Compile/Default,)
+Build/Install=$(if $(PKG_INSTALL),$(call Build/Install/Default,))
+Build/Dist=$(call Build/Dist/Default,)
+Build/DistCheck=$(call Build/DistCheck/Default,)
+</code></pre><p>先看看Build/Compile/Default，定义在include/package-defaults.mk中；</p>
+<pre><code>define Build/Compile/Default
+    +$(MAKE_VARS) \
+    $(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/$(MAKE_PATH) \
+        $(MAKE_FLAGS) \
+        $(1);
+endef
+</code></pre><p>相当于进到build_dir目录下面执行make iperf，即去执行source code的Makefile。<br>Build/Prepare/Default会执行$(PKG_UNPACK)和$(Build/Patch)，即解压tar包和打patch。</p>
+<h3 id="3-2-kernel">3.2 编译kernel</h3>
+<p>编译kernel使用命令make target/linux/compile，会进到BOARD目录下去make，对于Target System为&quot;Marvell Armada 37x/38x/XP&quot;，Target Profile为&quot;Marvell Armada 385 DB AP (DB-88F6820-AP)&quot;时，$(BOADR)等于mvebu；<br>target/linux/mvebu中的Makefile很简单：</p>
+<pre><code>include $(TOPDIR)/rules.mk
+
+ARCH:=arm
+BOARD:=mvenu
+BOARDNAME:=Marvell Armda 37x/38x/XP
+FEATURES:=usb pci pcie gpio nand squashfs
+CPU_TYPE:=contex-a9
+MAINTAINER:=Imre Kaloz &lt;kaloz@openwrt.org&gt;
+
+KERNEL_PATCHVER：=3.18
+
+include $(INCLUDE_DIR)/target.mk
+
+KERNELNAME:=zImage dtbs
+
+DEFAULT_PACKAGES += uboot-envtools
+
+$(eval $(call BuildTarget))
+</code></pre><p>在package/linux/Makefile定义了TARGET_BUILD=1，所以BuildTarget等于$(BuildKernel)，BuidKernel定义在kernel-build.mk中，kernel-build.mk中的compile目标规则定义如下：</p>
+<pre><code>  compile: $(LINUX_DIR)/.modules
+        $(MAKE) -C image compile TARGET_BUILD=
+</code></pre><p>编译kernel时目标compile依赖于$(LINUX_DIR)/.modules，install依赖于$(LINUX_DIR)/.image，prepare依赖于$(STAMP_CONFIGURED)，$(LINUX_DIR)/.modules依赖于$(STAMP_CONFIGURED)和.config，$(LINUX_DIR)/.imag依赖于$(STAMP_CONFIGURED)；</p>
+<p>在更新 $(LINUX_DIR)/.modules时执行命令$(Kernel/CompileModules)，更新 $(LINUX_DIR)/.image时执行命令 $(Kernel/CompileImage)，更新命令$(STAMP_CONFIGURED)是执行命令命令$(Kernel/Configure)，更新$(STAMP_PREPARED)时执行命令$(Kernel/Prepare)；</p>
+<center><img src="3.jpg" alt=""></center>
+
+<p>默认情况下，Kernel/CompileImage=Kernel/CompileImage/Default、kernel/CompileModules=kernel/CompileModules/Default、Kernel/Configure=Kernel/Configure/Default、Kernel/Prepare=Kernel/Prepare/Default。<br>Kernel/CompileImage/Default、kernel/CompileModules/Default、Kernel/Configure/Default、Kernel/Prepare/Default定义在kernel-default.mk中；</p>
+<ul>
+<li>Kernel/Prepare/Default<br>执行命令：<br>xzcat $(DL_DIR)/$(LINUX_SOURCE) | $(TAR) -C $(KERNEL_BUILD_DIR)$(TAR_OPTIONS)<br>$(Kernel/Patch)<br>即是解压和打patch</li><li>Kernel/Configure/Default<br>配置.config</li><li>kernel/CompileModules/Default<br>执行命令：<br>$(MAKE) $(KERNEL_MAKEOPTS) modules<br>即是进到build_dir下面的linux source code目录下执行make modules</li><li>Kernel/CompileImage/Default<br>执行命令：<br>$(MAKE) $(KERNEL_MAKEOPTS) $(if $(KERNELNAME),$(KERNELNAME),all) modules<br>即是进到build_dir里面的linux source code目录执行make all modules</li></ul>
+<h3 id="3-3-kernel-modules">3.3 编译kernel modules</h3>
+<p>kernel modules表示外部驱动模块，位于package/kernel目录下，例如mwlwifi就在package/kernel/mwlwifi下面；<br>看到Makefile和package的区别是最后一句</p>
+<pre><code>$(eval $(call KernelPackage,mwlwifi-pcie))
+</code></pre><p>KernelPackage定义在kernel.mk中：</p>
+<pre><code>$$(eval $$(call BuildPackage,kmod-$(1)))
+</code></pre><p>最终编译kernel modules和编译package的方式是一样的；<br>单独编译mwlwifi的命令是make package/kernel/mwlwifi/compile或者make package/mwlwifi/compile</p>
+<h2 id="4-">4 添加模块</h2>
+<h3 id="4-1-app-">4.1 添加APP模块</h3>
+<p>向OpenWrt中添加一个自己的APP的模块，模块的功能很简单，仅仅是打印一句&quot;Hello World&quot;，在package/utils中新建一个helloworld的文件夹，在helloworld文件夹中新建Makefile和src文件夹，src用于存放helloworld的源文件和helloworld bin的Makefile文件。<br>helloworld目录下的Makefile内容如下：</p>
+<pre><code>include $(TOPDIR)/rules.mk
+
+PKG_NAME:=helloworld
+PKG_RELEASE:=1
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/helloworld
+  SECTION:=utils
+  CATEGORY:=Utilities
+  TITLE:=Print Hello World
+endef
+
+define Build/Prepare
+    mkdir -p $(PKG_BUILD_DIR)
+    $(CP) -R ./src/* $(PKG_BUILD_DIR)
+endef
+
+define Package/helloworld/install
+    $(INSTALL_DIR) $(1)/usr/sbin
+    $(INSTALL_BIN) $(PKG_BUILD_DIR)/helloworld $(1)/usr/sbin
+endef
+
+$(eval $(call BuildPackage,helloworld))
+</code></pre><p>相关的宏定义如下</p>
+<ul>
+<li>PKG_NAME：<br>等于helloworld</li><li>PKG_RELEASE<br>Makefile的版本号为1</li><li>PKG_BUILD_DIR<br>编译路径，此处实际上和默认的路径名是一样的，所以可以不定义</li><li>Package/helloworld<br>设置CATEGORY:=Utilities，TITLE:=Print Hello World，在menuconfig中helloworld在Utilities项下面可以找到；</li><li>Build/Prepare<br>将package/utils/helloworld/src/目录下面的源代码拷贝到build_dir对于的目录下，编译会进到build_dir下面的helloworld目录下。</li><li>Package/helloworld/install<br>将编译生成的bin文件拷贝到root-mvebu/usr/sbin/目标下，最终会被打包到rootfs中去。</li></ul>
+<p>helloworld.c和编译helloworld的Makefile需要编写放在package/utils/helloworld/src/下面，最终执行make package/helloworld/compile即可以编译。</p>
+<h3 id="4-2-">4.2 添加驱动模块</h3>
+<p>同样，添加一个简单的helloworld驱动程序，驱动的功能仅仅是打印&quot;Hello World&quot;。在package/kernel/目录下新建helloworld目录，在helloworld目录下新建Makefile和src，src用于存放驱动的Makefile和源文件。</p>
+<p>helloworld目录下面的Makefile内容如下：</p>
+<pre><code>include $(TOPDIR)/rules.mk
+include $(INCLUDE_DIR)/kernel.mk
+
+PKG_NAME:=helloworld
+PKG_RELEASE:=1
+
+include $(INCLUDE_DIR)/package.mk
+
+define KernelPackage/helloworld
+  SUBMENU:=Other modules
+  TITLE:=Print Hello World
+  FILES:=$(PKG_BUILD_DIR)/helloworld.ko
+  AUTOLOAD:=$(call AutoLoad,50,helloworld)
+endef
+
+define Build/Prepare
+    mkdir -p $(PKG_BUILD_DIR)
+    $(CP) -R ./src/* $(PKG_BUILD_DIR)
+endef
+
+define Build/Compile
+    $(MAKE) -C &quot;$(LINUX_DIR)&quot; \
+        ARCH=&quot;$(LINUX_KARCH)&quot; \
+        CROSS_COMPILE=&quot;$(TARGET_CROSS)&quot; \
+        SUBDIR=&quot;$(PKG_BUILD_DIR)&quot; \
+        modules
+endef
+
+$(eval $(call KernelPackage,helloworld))
+</code></pre><p>OpenWrt编译kernel内部的模块和编译kernel外部的方式是不一样的，kernel内部的模块的Makefile文件位于package/kernel/modules/*.mk，而对于外部kernel模块，编译方式和APP package类似，只是把Package替换成了KernelPackage。<br>helloworld可以在menuconfig中的：</p>
+<pre><code>kernel modules ---&gt;
+    other modules ---&gt;
+        &lt;&gt; kmod-helloworld
+</code></pre><p>中选择。<br>同样prepare阶段将c文件和编译ko的Makefile文件拷贝到build_dir对应的目录下，compile时执行：</p>
+<pre><code>$(MAKE) -C &quot;$(LINUX_DIR)&quot; ARCH=&quot;$(LINUX_KARCH)&quot; \
+CROSS_COMPILE=&quot;$(TARGET_CROSS)&quot; SUBDIR=&quot;$(PKG_BUILD_DIR)&quot; \
+modules
+</code></pre><p>编译生成ko文件。</p>
+
+</body>
+</html>
+<!-- This document was created with MarkdownPad, the Markdown editor for Windows (http://markdownpad.com) -->
