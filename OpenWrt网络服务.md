@@ -4,7 +4,10 @@ v1.0
 2017.09.05**
 <br>
 
-## 1. preinit
+## 1. init scripts
+
+OpenWrt第一个用户层执行程序为/etc/preinit，这是个脚本程序，
+
 
 最其实的脚本是/etc/preinit，pi_init_cmd=“/sbin/init”，source /lib/functions.sh /lib/functions/preinit,sh /lib/functions/system.sh，调价了五个hook点，preinit_essential、preinit_main、failsafe、initramfs、preinit_mount_root。
 /lib/functions.sh定义了一些config的函数，/lib/functions/preinit.sh定义了一些boot_hook的函数，比如boot_hook_init、boot_hook_add、boot_hook_shift、boot_run_hook
@@ -553,18 +556,79 @@ root@OpenWrt:/# ubus -v list network.interface
 
 ### 5.2 add proto
 
+proto是interface获取IP配置的方式，包括static、DHCP、DHCPv6、PPPoE等，其中static(proto_static)是在代码中定义的，而DHCP、PPPoE定义在shell scripts上(proto_shell)，scripts位于/lib/netifd/proto/目录下。
+
+- static proto
 ```
-root@OpenWrt:/# cat /etc/config/network
+static struct proto_handler static_proto = {
+	.name = "static",
+	.flags = PROTO_FLAG_IMMEDIATE |
+		 PROTO_FLAG_FORCE_LINK_DEFAULT,
+	.config_params = &proto_ip_attr,
+	.attach = static_attach,
+};
+```
+config_params包括ipaddr、ip6addr、netmask、broadcast、gateway、ip6gw、ip6prefix；
+如果一个interface需要使用到该proto，则会使用它的attach方法
+- shell proto
+proto_shell_init会进到/lib/netifd/proto/目录下解析*.sh，以dhcp.sh为例，popen执行命令"/bin/sh -c dhcp.sh '' dump"，执行结果是一个json格式的字符串：
+```
+./dhcp.sh '' dump
+{ "name": "dhcp", "config": [ [ "ipaddr:ipaddr", 3 ], [ "hostname:hostname", 3 ]
+, [ "clientid", 3 ], [ "vendorid", 3 ], [ "broadcast:bool", 7 ], [ "reqopts:list
+(string)", 3 ], [ "iface6rd", 3 ], [ "sendopts", 3 ], [ "delegate", 7 ], [ "zone
+6rd", 3 ], [ "zone", 3 ], [ "mtu6rd", 3 ], [ "customroutes", 3 ] ], "no-device":
+ false, "no-proto-task": false, "available": false, "renew-handler": true, "last
+error": false }
+```
+分析一下执行脚本命令"dhcp.sh '' dump"做了哪些事情，进到dhcp.sh，首先执行函数init_proto "$@"，init_proto定义在netifd-proto.sh中，init_proto函数中，cmd=dump，也就是定义了函数add_protocol；
+```
+add_protocol() {
+        no_device=0
+        no_proto_task=0
+        available=0
+        renew_handler=0
 
-config interface 'loopback'
-        option ifname 'lo'
-        option proto 'static'
-        option ipaddr '127.0.0.1'
-        option netmask '255.0.0.0'
+        add_default_handler "proto_$1_init_config"
 
-config globals 'globals'
-        option ula_prefix 'fd83:ee71:3674::/48'
+        json_init
+        json_add_string "name" "$1"
+        json_add_array "config"
+        eval "proto_$1_init_config"
+        json_close_array
+        json_add_boolean no-device "$no_device"
+        json_add_boolean no-proto-task "$no_proto_task"
+        json_add_boolean available "$available"
+        json_add_boolean renew-handler "$renew_handler"
+        json_add_boolean lasterror "$lasterror"
+        json_dump
+}
+```
+回到dhcp.sh，文件的最后会执行函数add_protocol dhcp，实际上就是装置一个json结构的字符串，包括key：name、config、no-device、no-proto-task、available、renew-handler和lasterror；config为array类型，在proto_dhcp_init_config中组装，proto_dhcp_init_config函数定义在dhcp.sh中，向config添加成员ipaddr:ipaddr、hostname:hostname、clientid、vendorid、broadcast:bool、reqopts:list(string)、iface6rd、sendopts、delegate、zone6rd、zone、mtu6rd、customroutes，这些及时DHCP需要的参数。
+proto_shell_add_handler中封装一个proto_handle *proto：
+```
+proto->name = "dhcp"
+proto->attach = proto_shell_attach
+proto->flags //依赖于dump中no-device、no-proto-task、available、renew-handler和lasterror
+proto->config_params //从dump中的config导入，包括ipaddr、hostname、clientid、vendorid、broadcast、reqopts、iface6rd、sendopts、delegate、zone6rd、zone、mtu6rd、customroutes
+```
+最后通过add_proto_handler将proto添加到全局avl tree中，也就是句柄handlers中。
 
+### 5.3. init device & interface
+
+netifd中的device代表物理设备，例如eth0；
+如果需要管理device的状态，则注册一个device_user，device_user绑定到对于的device上，而且包含device event事件的回调函数，如果device的device_user计数为0，则device结构体会被自动释放掉；
+bridge或vlan是特殊的device，它们可以引用其他device；
+device的up/down状态由device_user计数决定，claim_device增加device_user计数，则bring up，release_device减少device_user计数，当计数减为0时，则bring down；
+
+netifd中的interface代表应用在一个或多个device上的配置；
+interface必须绑定一个main device和一个l3 device，如果使用static或者dhcp proto时，interface的l3 device指向main device；如果使用pppoe，则l3 device指向ppp0；
+
+config_init_all会调用config_init_devices、config_init_interfaces、config_init_routes、config_init_rules、config_init_globals、config_init_wireless来创建device、interface、wireless等；
+其中device、interface、route、rules、globals由/etc/config/network的配置参数来生成，wireless由/etc/config/wireles的配置参数来生成。
+
+/etc/config/network的内容如下：
+```
 config interface 'lan'
         option type 'bridge'
         option ifname 'eth0 eth1'
@@ -576,107 +640,14 @@ config interface 'lan'
 config interface 'wan'
         option ifname 'eth2'
         option proto 'dhcp'
+```
+上面定义了两个section，type都是interface，可见没有创建device，所以只看config_init_interfaces这个函数；
 
-config interface 'wan6'
-        option ifname 'eth2'
-        option proto 'dhcpv6'
+config_parse_interface会先判断有没有option disabled 1，如果有，则直接return，否则创建interface并添加到全局avl tree（interfaces）中，如果有option type 'bridge'，则使用config_parse_bridge_interface创建devices，再使用interface_alloc创建interface；
 
-
-root@OpenWrt:/# /etc/init.d/network restart
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'lan' is now down
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'lan' is disabled
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Network device 'eth0' link is down
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Bridge 'br-lan' link is down
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'lan' has link connectivity loss
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'loopback' is now down
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'loopback' is disabled
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Network device 'lo' link is down
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'loopback' has link connectivity loss
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'wan' is disabled
-Sat Oct  7 17:29:52 2017 daemon.notice netifd: Interface 'wan6' is disabled
-root@OpenWrt:/# Sat Oct  7 17:29:54 2017 user.notice root: { "name": "marvell", "device": [ [ "channel", 3 ], [ "hwmode", 3 ], [ "htmode", 3 ], [ "txantenna", 3 ], [d
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'lan' is setting up now
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'lan' is now up
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' is enabled
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' is setting up now
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' is now up
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'wan' is enabled
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'wan6' is enabled
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Network device 'lo' link is up
-Sat Oct  7 17:29:54 2017 daemon.notice netifd: Interface 'loopback' has link connectivity
-Sat Oct  7 17:29:55 2017 daemon.notice netifd: radio0 (5233): WPA2 CCMP
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: Network device 'eth0' link is up
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: Bridge 'br-lan' link is up
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: Interface 'lan' has link connectivity
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): Configuration file: /var/run/hostapd-wdev0ap0.conf
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): Configuration file: /var/run/hostapd-wdev1ap0.conf
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): [mrvl vendor] - hexdump(len=24): 18 00 26 00 41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d 35 47 2d 31
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): [mrvl-vendor] - hexdump_ascii(len=20):
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233):      41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d   AP8964-OpenWiFi-
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233):      35 47 2d 31                                       5G-1
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): Using interface wdev0ap0 with hwaddr 00:50:43:22:0e:66 and ssid "AP8964-OpenWiFi-5G-1"
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): wdev0ap0: interface state UNINITIALIZED->ENABLED
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio0 (5233): wdev0ap0: AP-ENABLED
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: Network device 'wdev0ap0' link is up
-Sat Oct  7 17:29:56 2017 daemon.notice netifd: radio1 (5234): Open
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): Configuration file: /var/run/hostapd-wdev0ap0.conf
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): Configuration file: /var/run/hostapd-wdev1ap0.conf
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): [mrvl vendor] - hexdump(len=24): 18 00 26 00 41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d 35 47 2d 31
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): [mrvl-vendor] - hexdump_ascii(len=20):
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234):      41 50 38 39 36 34 2d 4f 70 65 6e 57 69 46 69 2d   AP8964-OpenWiFi-
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234):      35 47 2d 31                                       5G-1
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): Using interface wdev0ap0 with hwaddr 00:50:43:22:0e:66 and ssid "AP8964-OpenWiFi-5G-1"
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): wdev0ap0: interface state UNINITIALIZED->ENABLED
-Sat Oct  7 17:29:57 2017 daemon.notice netifd: radio1 (5234): wdev0ap0: AP-ENABLED
-Sat Oct  7 17:29:58 2017 daemon.notice netifd: Network device 'wdev1ap0' link is up
-
-netifd注册了三个object，network，network.device,network.interface
-root@OpenWrt:/# ubus -v list network
-'network' @90c358a9
-        "restart":{}
-        "reload":{}
-        "add_host_route":{"target":"String","v6":"Boolean","interface":"String"}
-        "get_proto_handlers":{}
-        "add_dynamic":{"name":"String"}
-root@OpenWrt:/# ubus -v list network.device
-'network.device' @9fa99d73
-        "status":{"name":"String"}
-        "set_alias":{"alias":"Array","device":"String"}
-        "set_state":{"name":"String","defer":"Boolean"}
-root@OpenWrt:/# ubus -v list network.wireless
-'network.wireless' @4cb96ce9
-        "up":{}
-        "down":{}
-        "status":{}
-        "notify":{}
-        "get_validate":{}
-root@OpenWrt:/# ubus -v list network.interface
-'network.interface' @1193bd55
-        "up":{}
-        "down":{}
-        "status":{}
-        "prepare":{}
-        "dump":{}
-        "add_device":{"name":"String","link-ext":"Boolean"}
-        "remove_device":{"name":"String","link-ext":"Boolean"}
-        "notify_proto":{}
-        "remove":{}
-        "set_data":{}
-
-./dhcp.sh '' dump
-{ "name": "dhcp", "config": [ [ "ipaddr:ipaddr", 3 ], [ "hostname:hostname", 3 ]
-, [ "clientid", 3 ], [ "vendorid", 3 ], [ "broadcast:bool", 7 ], [ "reqopts:list
-(string)", 3 ], [ "iface6rd", 3 ], [ "sendopts", 3 ], [ "delegate", 7 ], [ "zone
-6rd", 3 ], [ "zone", 3 ], [ "mtu6rd", 3 ], [ "customroutes", 3 ] ], "no-device":
- false, "no-proto-task": false, "available": false, "renew-handler": true, "last
-error": false }
-
-proto->attach = proto_shell_attach;
-static_proto.attach = static_attach
-
-system_init 注册netlink接收事件，NETLINK_ROUTE cb_rtnl_event, RTM_NEWLINK carrier
-NETLINK_KOBJECT_UEVENT add@ remove@
-
+上面的config中interface lan是bridge，interface wan为普通interface，下面先看看config_parse_bridge_interface；
+interface name是lan，则会创建一个name是br-lan的device，device_type为bridge_device_type；
+```
 const struct device_type bridge_device_type = {
 	.name = "Bridge",
 	.config_params = &bridge_attr_list,
@@ -687,47 +658,26 @@ const struct device_type bridge_device_type = {
 	.free = bridge_free,
 	.dump_info = bridge_dump_info,
 };
-
-const struct device_type simple_device_type = {
-	.name = "Network device",
-	.config_params = &device_attr_list,
-
-	.create = simple_device_create,
-	.check_state = system_if_check,
-	.free = simple_device_free,
-};
 ```
+先调用type->create，也就是bridge_create，再调用type->config_init，也就是bridge_config_init；
 
-netifd_ubus_init首先uloop_init，也是先开启一个loop，然后，ubus_connet连接到ubusd；
-ubus_connect
---> ubus_connect_ctx
---> ubus_reconnect
---> usock
---> usock_connect
---> connect(sock, sa, sa_len)
-usock对于client会创建一个USOCK_UNIX类型的socket，并且connect去连接path识别的server socket；
-netifd_ubus_add_fd
---> ubus_add_uloop
---> uloop_fd_add
-uloop_fd_add将ctx->sock添加到loop中，ctx->就是刚刚通过usock创建的Unix socket；
-netifd_add_object添加main_object、dev_object、wireless_object；
-netifd_add_object会向ubusd注册方法，发送消息UBUS_MSG_ADD_OBJECT；
-其中main_object的method有restart、reload、add_host_route、get_prote_handlers、add_dynamic；
-dev_object的method有status、set_alias、set_state；
-wireless_object的method有up、down、status、notify、get_validate；
-’这些method都是执行scripts；
-netifd_add_iface_object添加iface_object
-iface_object的method有up、down、status、prepare、dump、add_device、remove_device、notify_proto、remove、set_data；
-name分别是：
-main_object：network
-dev_object：network.device
-wireless_object：network.wireless
-iface_object：network.interface
+进到bridge_create，调用链如下所示：
+```
+bridge_create
+	--> device_init
+		--> device_init_virtual
+			--> 
+```
+最后设置device的set_state方法是bridge_set_state，将device添加到全局avl tree(devices)中去；
 
-proto_shell_init：netifd_init_script_handlers(proto_fd, proto_shell_add_handler)
-对应到脚本/lib/netifd/proto/*.sh
-wireless_init：netifd_init_script_handlers(drv_fd, wireless_add_handler)
-对应到脚本/lib/netifd/wireless/*.sh
+再看bridge_config_init，bridge_add_member根据config中的ifname添加member，ifname包括eth0和eth1，device_get(name, true)会先从avl tree devices中查找，如果没有查找到则创建，初始化时并没有eth0和eth1 device，在device_get会创建这两个device，device_type为simple_device_type；
 
-system_init注册NETLINK_ROUTE、NETLINK_KOBJECT_UEVENT来接收kernel发上来的netlink事件，回调函数分别是cb_rtnl_event和handle_hotplug_event；
-config_init_all，做了一堆初始化工作，待分析；
+添加member到bridge_state的vlist_tree members后，会执行vlist的update函数，即bridge_member_update；bridge_member_update中会给之前创建的eth0/eth1 device添加device_user，bridge_member作为bridge device的device_user，在bridge_member结构体中会有一个成员struct device_user dev，bm->dev.cb = bridge_member_cb；bridge_enable_member中device_claim将eth0/eth1 bring up，system_bridge_addif桥接到br-lan上；
+
+ interface_alloc申请interface，将interface添加到全局avl list interfaces中，执行avl_list update回调函数，interface_update，interface_update做了三件事：
+1. proto_init_interface
+interface attach到proto
+2. interface_claim_device
+interface绑定main device和l3 device；
+3. netifd_ubus_add_interface
+注册ubus object network.interface.xxx，method：up、down、status、prepare、dump、add_device、remove_device、notify_proto、remove、set_data.
