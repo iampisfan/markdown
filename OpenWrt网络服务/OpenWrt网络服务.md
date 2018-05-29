@@ -18,6 +18,8 @@ source /lib/preinit/*下面的所以脚本文件，然后boot_run_hook preinit_e
 preinit函数，配置了环境变量PREINIT，再一次fork了/etc/preinit
 进程消失后，调用回调函数spawn_procd，spawn_procd则execp(“procd”)，procd再去执行/etc/init.d/*文件。启动各个服务。
 
+*** ---待补充--- ***
+
 ## 2. ubus
 
 ubus是OpenWrt中的进程间通信机制，类似于桌面版linux的dbus，Android的binder。ubus相当于简化版的dbus，ubus基于unix socket实现，socket绑定到一个本地文件，具有较高的效率；
@@ -461,6 +463,8 @@ preinit_proc的cb函数是spawn_procd，即preinit退出后执行spanw_procd
 spawn_procd再去执行/sbin/procd
 
 procd有5个状态，分别是STATE_EARLY、STATE_INIT、STATE_RUNNING、STATE_SHUTDOWN、STATE_HALT，这个5个状态按顺序变化，当前状态保存在全局变量state中，可通过procd_state_next()函数使状态变化；
+
+*** ---待补充--- ***
 
 ## 5. netifd
 
